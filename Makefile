@@ -32,8 +32,10 @@ config:
 
 GHC?=ghc
 
+# Note: as long as we are using dynamic linking with the external libraries, stdc++ will be pulled
+# in automaticall. If linking is static, we will have to specify it explicitly.
 GHC_COMPILEFLAGS=
-GHC_LINKFLAGS=-static -lstdc++ -lz -package QuickCheck $(MCBIND_LIB) $(MINISAT_LIB)
+GHC_LINKFLAGS=-package QuickCheck $(MCBIND_LIB) $(MINISAT_LIB) -lz #-lstdc++
 
 ifeq ($(VERB),)
 ECHO=@
@@ -56,10 +58,17 @@ $(BUILD_DIR)/debug/%.o:				MBINDC_CXXFLAGS +=$(MBINDC_DEB) -g
 $(BUILD_DIR)/release/bin/test-minisatraw:	$(BUILD_DIR)/release/MiniSatRaw.o
 	$(VERB) echo Linking: $@
 	$(ECHO) mkdir -p $(dir $@)
-	$(ECHO) $(GHC) -o $@ $< $(GHC_LINKFLAGS)
+	$(ECHO) $(GHC) -o $@ $< $(GHC_LINKFLAGS) #-lstdc++
 
 ## Compile rules:
 $(BUILD_DIR)/release/%.o:	%.hs
 	$(VERB) echo Compiling: $@
 	$(ECHO) mkdir -p $(dir $@)
-	$(ECHO) $(GHC) $(GHC_COMPILEFLAGS) -c -o $@ $<
+	$(ECHO) $(GHC) $(GHC_COMPILEFLAGS) -c -o $@ $< -hidir $(dir $@)
+
+ghci:	
+	ghci Sat.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
+
+ghci2:
+	ghci SatImplicit.hs $(GHC_LINKFLAGS)
+

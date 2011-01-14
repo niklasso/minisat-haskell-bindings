@@ -1,3 +1,6 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE Rank2Types #-}
 module SatImplicit
   -- a general implicit interface
   ( withNewSolver -- :: MonadSat m => (forall s . (?solver :: Solver m s) => m a) -> m a

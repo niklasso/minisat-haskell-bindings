@@ -1,3 +1,5 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE Rank2Types #-}
 module Sat
   -- solvers and literals
   ( Solver    -- :: (* -> *) -> * -> *

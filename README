@@ -1,0 +1,16 @@
+- Configure using "make config" as in other libraries.
+
+- Test with:
+
+  > make
+  > build/release/bin/test-minisatraw
+  ...Ctrl-C
+
+- Or:
+
+  > make ghci
+  ...
+  Prelude Sat> withNewSolver (\s -> newLit s >>= \x -> addClause s [x] >> solve s []) :: IO Bool
+  True
+  Prelude Sat> withNewSolver (\s -> newLit s >>= \x -> addClause s [x] >> solve s [neg x]) :: IO Bool
+  False
