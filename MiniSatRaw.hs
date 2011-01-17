@@ -11,6 +11,7 @@ import Data.List( nub, (\\) )
 import System.IO
 import Control.Exception ( finally )
 
+
 ----------------------------------------------------------------------------
 
 data Check
@@ -188,6 +189,7 @@ prop_Program (Program p) =
   monadicIO $
     do ok <- run $
                do s <- newSolver
+                  eliminate s True
                   ok <- check s [] [] p
                   deleteSolver s
                   return ok
@@ -258,26 +260,35 @@ withNewSolver h =
      h s `finally` deleteSolver s
 
 newSolver :: IO Solver
-newSolver = solver_new
---newSolver = do s <- solver_new; solver_set_verbosity s 0; return s
+newSolver = minisat_new
+--newSolver = do s <- minisat_new; minisat_set_verbosity s 0; return s
 
 deleteSolver :: Solver -> IO ()
-deleteSolver = solver_delete
+deleteSolver = minisat_delete
 
 newLit :: Solver -> IO Lit
-newLit = solver_newLit
+newLit = minisat_newLit
 
 neg :: Lit -> Lit
-neg = solver_negate
+neg = minisat_negate
 
-addClause :: Solver -> [Lit] -> IO ()
+addClause :: Solver -> [Lit] -> IO Bool
 addClause s xs =
-  do solver_addClause_begin s
-     sequence_ [ solver_addClause_addLit s x | x <- xs ]
-     solver_addClause_commit s
+  do minisat_addClause_begin s
+     sequence_ [ minisat_addClause_addLit s x | x <- xs ]
+     minisat_addClause_commit s
 
-simplify :: Solver -> IO ()
-simplify = solver_simplify
+simplify :: Solver -> IO Bool
+simplify = minisat_simplify
+
+eliminate :: Solver -> Bool -> IO Bool
+eliminate = minisat_eliminate
+
+setFrozen :: Solver -> Var -> Bool -> IO ()
+setFrozen = minisat_setFrozen
+
+isEliminated :: Solver -> Var -> IO Bool
+isEliminated = minisat_isEliminated
 
 {-
 solve :: Solver -> [Lit] -> Model a -> IO (Either [Lit] a)
@@ -285,68 +296,68 @@ solve :: Solver -> [Lit] -> Model a -> IO (Either [Lit] a)
 
 solve :: Solver -> [Lit] -> IO Bool
 solve s xs =
-  do solver_solve_begin s
-     sequence_ [ solver_solve_addLit s x | x <- xs ]
-     solver_solve_commit s
+  do minisat_solve_begin s
+     sequence_ [ minisat_solve_addLit s x | x <- xs ]
+     minisat_solve_commit s
 
 value, modelValue :: Solver -> Lit -> IO (Maybe Bool)
-(value,modelValue) = (get solver_value_Lit, get solver_modelValue_Lit)
+(value,modelValue) = (get minisat_value_Lit, get minisat_modelValue_Lit)
  where
   get f s x = mbool `fmap` f s x
 
   mbool b 
-    | b == solver_get_l_False = Just False
-    | b == solver_get_l_True  = Just True
+    | b == minisat_get_l_False = Just False
+    | b == minisat_get_l_True  = Just True
     | otherwise               = Nothing
 
 conflict :: Solver -> IO [Lit]
 conflict s =
-  do n <- solver_conflict_len s
-     sequence [ solver_conflict_nthLit s i | i <- [0..n-1] ]
+  do n <- minisat_conflict_len s
+     sequence [ minisat_conflict_nthLit s i | i <- [0..n-1] ]
      
 ----------------------------------------------------------------------------
 
 main_raw =
-  do s <- solver_new
-     solver_set_verbosity s 0
-     x <- solver_newLit s
-     y <- solver_newLit s
+  do s <- minisat_new
+     minisat_set_verbosity s 0
+     x <- minisat_newLit s
+     y <- minisat_newLit s
      
-     solver_addClause_begin s
-     solver_addClause_addLit s x
-     solver_addClause_addLit s y
-     solver_addClause_commit s
+     minisat_addClause_begin s
+     minisat_addClause_addLit s x
+     minisat_addClause_addLit s y
+     minisat_addClause_commit s
      
-     solver_addClause_begin s
-     solver_addClause_addLit s (solver_negate x)
-     solver_addClause_addLit s (solver_negate y)
-     solver_addClause_commit s
+     minisat_addClause_begin s
+     minisat_addClause_addLit s (minisat_negate x)
+     minisat_addClause_addLit s (minisat_negate y)
+     minisat_addClause_commit s
  
-     b <- solver_solve s 0 nullPtr
+     b <- minisat_solve s 0 nullPtr
      printResult s x y b
      
-     solver_solve_begin s
-     solver_solve_addLit s x
-     b <- solver_solve_commit s
+     minisat_solve_begin s
+     minisat_solve_addLit s x
+     b <- minisat_solve_commit s
      printResult s x y b
      
-     solver_solve_begin s
-     solver_solve_addLit s x
-     solver_solve_addLit s y
-     b <- solver_solve_commit s
+     minisat_solve_begin s
+     minisat_solve_addLit s x
+     minisat_solve_addLit s y
+     b <- minisat_solve_commit s
      printResult s x y b
      
-     solver_delete s
+     minisat_delete s
 
 printResult_raw s x y True =
-  do a <- solver_modelValue_Lit s x
-     b <- solver_modelValue_Lit s y
+  do a <- minisat_modelValue_Lit s x
+     b <- minisat_modelValue_Lit s y
      putStrLn ("SAT! x=" ++ show a ++ ", y=" ++ show b)
 
 printResult_raw s x y False =
-  do n <- solver_conflict_len s
+  do n <- minisat_conflict_len s
      cnf <- sequence
-              [ solver_conflict_nthLit s i
+              [ minisat_conflict_nthLit s i
               | i <- [0..n-1]
               ]
      putStrLn ("UNSAT! " ++ show cnf)
@@ -362,53 +373,58 @@ instance Show Var where
   show (MkVar n) = 'v' : show n
 
 instance Show Lit where
-  show x = (if solver_sign x then "~" else "") ++ show (solver_var x) 
+  show x = (if minisat_sign x then "~" else "") ++ show (minisat_var x) 
 
 instance Show LBool where
   show b
-    | b == solver_get_l_False = "False"
-    | b == solver_get_l_True  = "True"
+    | b == minisat_get_l_False = "False"
+    | b == minisat_get_l_True  = "True"
     | otherwise               = "Undef"
 
-foreign import ccall unsafe solver_new :: IO Solver
-foreign import ccall unsafe solver_delete :: Solver -> IO ()
-foreign import ccall unsafe solver_newVar :: Solver -> IO Var
-foreign import ccall unsafe solver_newLit :: Solver -> IO Lit
-foreign import ccall unsafe solver_mkLit :: Var -> Lit
-foreign import ccall unsafe solver_mkLit_args :: Var -> Bool -> Lit
-foreign import ccall unsafe solver_negate :: Lit -> Lit
-foreign import ccall unsafe solver_var :: Lit -> Var
-foreign import ccall unsafe solver_sign :: Lit -> Bool
-foreign import ccall unsafe solver_addClause :: Solver -> Int -> Ptr Lit -> IO ()
-foreign import ccall unsafe solver_addClause_begin :: Solver -> IO ()
-foreign import ccall unsafe solver_addClause_addLit :: Solver -> Lit -> IO ()
-foreign import ccall unsafe solver_addClause_commit :: Solver -> IO ()
-foreign import ccall unsafe solver_simplify :: Solver -> IO ()
-foreign import ccall unsafe solver_solve :: Solver -> Int -> Ptr Lit -> IO Bool
-foreign import ccall unsafe solver_solve_begin :: Solver -> IO ()
-foreign import ccall unsafe solver_solve_addLit :: Solver -> Lit -> IO ()
-foreign import ccall unsafe solver_solve_commit :: Solver -> IO Bool
-foreign import ccall unsafe solver_okay :: Solver -> IO Bool
-foreign import ccall unsafe solver_setPolarity :: Solver -> Var -> Bool -> IO ()
-foreign import ccall unsafe solver_setDecisionVar :: Solver -> Var -> Bool -> IO ()
-foreign import ccall unsafe solver_get_l_True :: LBool
-foreign import ccall unsafe solver_get_l_False :: LBool
-foreign import ccall unsafe solver_get_l_Undef :: LBool
-foreign import ccall unsafe solver_value_Var :: Solver -> Var -> IO LBool
-foreign import ccall unsafe solver_value_Lit :: Solver -> Lit -> IO LBool
-foreign import ccall unsafe solver_modelValue_Var :: Solver -> Var -> IO LBool
-foreign import ccall unsafe solver_modelValue_Lit :: Solver -> Lit -> IO LBool
+foreign import ccall unsafe minisat_new :: IO Solver
+foreign import ccall unsafe minisat_delete :: Solver -> IO ()
+foreign import ccall unsafe minisat_newVar :: Solver -> IO Var
+foreign import ccall unsafe minisat_newLit :: Solver -> IO Lit
+foreign import ccall unsafe minisat_mkLit :: Var -> Lit
+foreign import ccall unsafe minisat_mkLit_args :: Var -> Bool -> Lit
+foreign import ccall unsafe minisat_negate :: Lit -> Lit
+foreign import ccall unsafe minisat_var :: Lit -> Var
+foreign import ccall unsafe minisat_sign :: Lit -> Bool
+foreign import ccall unsafe minisat_addClause :: Solver -> Int -> Ptr Lit -> IO Bool
+foreign import ccall unsafe minisat_addClause_begin :: Solver -> IO ()
+foreign import ccall unsafe minisat_addClause_addLit :: Solver -> Lit -> IO ()
+foreign import ccall unsafe minisat_addClause_commit :: Solver -> IO Bool
+foreign import ccall unsafe minisat_simplify :: Solver -> IO Bool
+foreign import ccall unsafe minisat_solve :: Solver -> Int -> Ptr Lit -> IO Bool
+foreign import ccall unsafe minisat_solve_begin :: Solver -> IO ()
+foreign import ccall unsafe minisat_solve_addLit :: Solver -> Lit -> IO ()
+foreign import ccall unsafe minisat_solve_commit :: Solver -> IO Bool
+foreign import ccall unsafe minisat_okay :: Solver -> IO Bool
+foreign import ccall unsafe minisat_setPolarity :: Solver -> Var -> Bool -> IO ()
+foreign import ccall unsafe minisat_setDecisionVar :: Solver -> Var -> Bool -> IO ()
+foreign import ccall unsafe minisat_get_l_True :: LBool
+foreign import ccall unsafe minisat_get_l_False :: LBool
+foreign import ccall unsafe minisat_get_l_Undef :: LBool
+foreign import ccall unsafe minisat_value_Var :: Solver -> Var -> IO LBool
+foreign import ccall unsafe minisat_value_Lit :: Solver -> Lit -> IO LBool
+foreign import ccall unsafe minisat_modelValue_Var :: Solver -> Var -> IO LBool
+foreign import ccall unsafe minisat_modelValue_Lit :: Solver -> Lit -> IO LBool
+
+-- // SimpSolver methods:
+foreign import ccall unsafe minisat_setFrozen :: Solver -> Var -> Bool -> IO ()
+foreign import ccall unsafe minisat_isEliminated :: Solver -> Var -> IO Bool
+foreign import ccall unsafe minisat_eliminate :: Solver -> Bool -> IO Bool
 
 -- orkar...
 {-
-int solver_num_assigns(solver *s);
-int solver_num_clauses(solver *s);     
-int solver_num_learnts(solver *s);     
-int solver_num_vars(solver *s);  
-int solver_num_freeVars(solver *s);
-int solver_num_conflicts(solver *s);
+int minisat_num_assigns(solver *s);
+int minisat_num_clauses(solver *s);     
+int minisat_num_learnts(solver *s);     
+int minisat_num_vars(solver *s);  
+int minisat_num_freeVars(solver *s);
+int minisat_num_conflicts(solver *s);
 -}
 
-foreign import ccall unsafe solver_conflict_len :: Solver -> IO Int
-foreign import ccall unsafe solver_conflict_nthLit :: Solver -> Int -> IO Lit
-foreign import ccall unsafe solver_set_verbosity :: Solver -> Int -> IO ()
+foreign import ccall unsafe minisat_conflict_len :: Solver -> IO Int
+foreign import ccall unsafe minisat_conflict_nthLit :: Solver -> Int -> IO Lit
+foreign import ccall unsafe minisat_set_verbosity :: Solver -> Int -> IO ()
