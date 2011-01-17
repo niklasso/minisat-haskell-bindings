@@ -1,0 +1,16 @@
+TODO
+
+Make the following API:s
+
+* a "raw" API, with nice names, but everything explicit
+
+* a corresponding typed API, that does not allow mixing of Lits
+
+* a Sat-monad, with one implicit Solver (lazy and strict variants)
+
+* a Sat-monad, with many explicit Solvers (lazy and strict variants)
+
+To think about:
+
+Which of these needs ForeignPtr automatic garbage collection? Perhaps
+already the first API?
