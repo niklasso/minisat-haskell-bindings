@@ -55,7 +55,7 @@ $(BUILD_DIR)/release/%.o:			GHC_COMPILEFLAGS+=-O2
 $(BUILD_DIR)/debug/%.o:				MBINDC_CXXFLAGS +=$(MBINDC_DEB) -g
 
 ## Test link rules:
-$(BUILD_DIR)/release/bin/test-minisatraw:	$(BUILD_DIR)/release/MiniSatRaw.o
+$(BUILD_DIR)/release/bin/test-minisatraw:	$(BUILD_DIR)/release/MiniSat.o $(BUILD_DIR)/release/TestMiniSat.o
 	$(VERB) echo Linking: $@
 	$(ECHO) mkdir -p $(dir $@)
 	$(ECHO) $(GHC) -o $@ $< $(GHC_LINKFLAGS) #-lstdc++
@@ -68,7 +68,7 @@ $(BUILD_DIR)/release/%.o:	%.hs
 
 ghci:	
 #	ghci Sat.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
-	ghci MiniSatRaw.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
+	ghci Main.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
 
 ghci2:
 	ghci SatImplicit.hs $(GHC_LINKFLAGS)
