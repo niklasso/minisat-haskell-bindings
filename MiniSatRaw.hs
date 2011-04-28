@@ -315,6 +315,13 @@ conflict s =
   do n <- minisat_conflict_len s
      sequence [ minisat_conflict_nthLit s i | i <- [0..n-1] ]
      
+-- TODO: are these good enough? Also, add functions: negate, and, or, etc.
+l_True  = minisat_get_l_True
+l_False = minisat_get_l_False
+l_Undef = minisat_get_l_Undef
+
+
+
 ----------------------------------------------------------------------------
 
 main_raw =
@@ -367,7 +374,7 @@ printResult_raw s x y False =
 newtype Solver = MkSolver (Ptr ())
 newtype Var    = MkVar CInt  deriving ( Eq, Ord )
 newtype Lit    = MkLit CInt  deriving ( Eq, Ord )
-newtype LBool  = MkLBool Int deriving (Eq, Ord)
+newtype LBool  = MkLBool Int deriving ( Eq, Ord )
 
 instance Show Var where
   show (MkVar n) = 'v' : show n
@@ -379,7 +386,7 @@ instance Show LBool where
   show b
     | b == minisat_get_l_False = "False"
     | b == minisat_get_l_True  = "True"
-    | otherwise               = "Undef"
+    | otherwise                = "Undef"
 
 foreign import ccall unsafe minisat_new :: IO Solver
 foreign import ccall unsafe minisat_delete :: Solver -> IO ()
@@ -400,7 +407,7 @@ foreign import ccall unsafe minisat_solve_begin :: Solver -> IO ()
 foreign import ccall unsafe minisat_solve_addLit :: Solver -> Lit -> IO ()
 foreign import ccall unsafe minisat_solve_commit :: Solver -> IO Bool
 foreign import ccall unsafe minisat_okay :: Solver -> IO Bool
-foreign import ccall unsafe minisat_setPolarity :: Solver -> Var -> Bool -> IO ()
+foreign import ccall unsafe minisat_setPolarity :: Solver -> Var -> LBool -> IO ()
 foreign import ccall unsafe minisat_setDecisionVar :: Solver -> Var -> Bool -> IO ()
 foreign import ccall unsafe minisat_get_l_True :: LBool
 foreign import ccall unsafe minisat_get_l_False :: LBool

@@ -67,7 +67,8 @@ $(BUILD_DIR)/release/%.o:	%.hs
 	$(ECHO) $(GHC) $(GHC_COMPILEFLAGS) -c -o $@ $< -hidir $(dir $@)
 
 ghci:	
-	ghci Sat.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
+#	ghci Sat.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
+	ghci MiniSatRaw.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
 
 ghci2:
 	ghci SatImplicit.hs $(GHC_LINKFLAGS)
