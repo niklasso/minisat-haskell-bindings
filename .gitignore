@@ -1,4 +1,2 @@
-*.o
-*.hi
+build
 config.mk
-test-minisatraw
