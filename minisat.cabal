@@ -1,0 +1,10 @@
+name:            minisat
+version:         0
+build-type:      Simple
+cabal-version:   >= 1.6
+
+library
+  exposed-modules: MiniSat
+  extensions:      ForeignFunctionInterface
+  build-depends:   base >= 3 && < 5
+  extra-libraries: minisat-c minisat z
