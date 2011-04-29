@@ -71,9 +71,15 @@ conflict s =
      sequence [ minisat_conflict_nthLit s i | i <- [0..n-1] ]
      
 -- TODO: are these good enough? Also, add functions: negate, and, or, etc.
+#ifdef Minisat_Opaque
 l_True  = MkLBool $ #const minisat_l_True.f
 l_False = MkLBool $ #const minisat_l_False.f
 l_Undef = MkLBool $ #const minisat_l_Undef.f
+#else
+l_True = MkLBool $ #const minisat_l_True
+l_False = MkLBool $ #const minisat_l_False
+l_Undef = MkLBool $ #const minisat_l_Undef
+#endif
 
 ----------------------------------------------------------------------------
 
@@ -94,53 +100,57 @@ instance Show LBool where
     | b == l_True  = "True"
     | otherwise    = "Undef"
 
-#define TYPE_solver(f) f(minisat_solver*, Solver)
-#define TYPE_void(f) f(void, ())
-#define TYPE_bool(f) f(minisat_bool, Bool)
-#define TYPE_lit(f) f(minisat_Lit, Lit)
-#define TYPE_lits(f) f(minisat_Lit*, Ptr Lit)
-#define TYPE_int(f) f(int, Int)
-#define TYPE_var(f) f(minisat_Var, Var)
-#define TYPE_lbool(f) f(minisat_lbool, LBool)
+#define CTYPE_solver minisat_solver*
+#define HTYPE_solver Solver
+#define CTYPE_bool minisat_bool
+#define HTYPE_bool Bool
+#define CTYPE_lit minisat_Lit
+#define HTYPE_lit Lit
+#define CTYPE_int int
+#define HTYPE_int Int
+#define CTYPE_var minisat_Var
+#define HTYPE_var Var
+#define CTYPE_lbool minisat_lbool
+#define HTYPE_lbool LBool
 
-#unsafe io, solver, minisat_new
-#unsafe io, void, minisat_delete, solver
-#unsafe io, var, minisat_newVar, solver
-#unsafe io, lit, minisat_newLit, solver
-#unsafe pure, lit, minisat_mkLit, var
-#unsafe pure, lit, minisat_mkLit_args, var, int
-#unsafe pure, lit, minisat_negate, lit
-#unsafe pure, var, minisat_var, lit
-#unsafe pure, bool, minisat_sign, lit
-#unsafe io, bool, minisat_addClause, solver, int, lits
-#unsafe io, void, minisat_addClause_begin, solver
-#unsafe io, void, minisat_addClause_addLit, solver, lit
-#unsafe io, bool, minisat_addClause_commit, solver
-#unsafe io, bool, minisat_simplify, solver
-#safe io, bool, minisat_solve, solver, int, lits
-#unsafe io, void, minisat_solve_begin, solver
-#unsafe io, void, minisat_solve_addLit, solver, lit
-#safe io, bool, minisat_solve_commit, solver
-#unsafe io, bool, minisat_okay, solver
-#unsafe io, void, minisat_setPolarity, solver, var, int
-#unsafe io, void, minisat_setDecisionVar, solver, var, int
-#unsafe io, lbool, minisat_value_Var, solver, var
-#unsafe io, lbool, minisat_value_Lit, solver, lit
-#unsafe io, lbool, minisat_modelValue_Var, solver, var
-#unsafe io, lbool, minisat_modelValue_Lit, solver, lit
+#unsafe minisat_new,              0, io(solver)
+#unsafe minisat_delete,           1(solver), io(unit)
+#unsafe minisat_newVar,           1(solver), io(var)
+#unsafe minisat_newLit,           1(solver), io(lit)
+#unsafe minisat_mkLit,            1(var), lit
+#unsafe minisat_mkLit_args,       2(var, int), lit
+#unsafe minisat_negate,           1(lit), lit
+#unsafe minisat_var,              1(lit), var
+#unsafe minisat_sign,             1(lit), bool
+#unsafe minisat_addClause,        3(solver, int, ptr(lit)), io(bool)
+#unsafe minisat_addClause_begin,  1(solver), io(unit)
+#unsafe minisat_addClause_addLit, 2(solver, lit), io(unit)
+#unsafe minisat_addClause_commit, 1(solver), io(bool)
+#unsafe minisat_simplify,         1(solver), io(bool)
+#safe minisat_solve,              3(solver, int, ptr(lit)), io(bool)
+#unsafe minisat_solve_begin,      1(solver), io(unit)
+#unsafe minisat_solve_addLit,     2(solver, lit), io(unit)
+#safe minisat_solve_commit,       1(solver), io(bool)
+#unsafe minisat_okay,             1(solver), io(bool)
+#unsafe minisat_setPolarity,      3(solver, var, int), io(unit)
+#unsafe minisat_setDecisionVar,   3(solver, var, int), io(unit)
+#unsafe minisat_value_Var,        2(solver, var), io(lbool)
+#unsafe minisat_value_Lit,        2(solver, lit), io(lbool)
+#unsafe minisat_modelValue_Var,   2(solver, var), io(lbool)
+#unsafe minisat_modelValue_Lit,   2(solver, lit), io(lbool)
 
 -- // Simpsolver methods:
-#unsafe io, void, minisat_setFrozen, solver, var, bool
-#unsafe io, bool, minisat_isEliminated, solver, var
-#unsafe io, bool, minisat_eliminate, solver, bool
+#unsafe minisat_setFrozen,        3(solver, var, bool), io(unit)
+#unsafe minisat_isEliminated,     2(solver, var), io(bool)
+#unsafe minisat_eliminate,        2(solver, bool), io(bool)
 
-#unsafe io, int, minisat_num_assigns, solver
-#unsafe io, int, minisat_num_clauses, solver
-#unsafe io, int, minisat_num_learnts, solver
-#unsafe io, int, minisat_num_vars, solver
-#unsafe io, int, minisat_num_freeVars, solver
-#unsafe io, int, minisat_num_conflicts, solver
+#unsafe minisat_num_assigns,      1(solver), io(int)
+#unsafe minisat_num_clauses,      1(solver), io(int)
+#unsafe minisat_num_learnts,      1(solver), io(int)
+#unsafe minisat_num_vars,         1(solver), io(int)
+#unsafe minisat_num_freeVars,     1(solver), io(int)
+#unsafe minisat_num_conflicts,    1(solver), io(int)
 
-#unsafe io, int, minisat_conflict_len, solver
-#unsafe io, lit, minisat_conflict_nthLit, solver, int
-#unsafe io, void, minisat_set_verbosity, solver, int
+#unsafe minisat_conflict_len,     1(solver), io(int)
+#unsafe minisat_conflict_nthLit,  2(solver, int), io(lit)
+#unsafe minisat_set_verbosity,    2(solver, int), io(unit)

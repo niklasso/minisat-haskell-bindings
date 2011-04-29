@@ -1,28 +1,27 @@
-#define hsc_unsafe(...) hsc_go(unsafe, __VA_ARGS__)
-#define hsc_safe(...) hsc_go(safe, __VA_ARGS__)
-#define hsc_go(safety, purity, ret, name, ...) \
-  extern TYPE_##ret(FST) name(TYPES(FST, COMMA, __VA_ARGS__)); \
-  printf("%s\n", STR(DECLARATION(safety, purity, ret, name, __VA_ARGS__)));
+#define hsc_unsafe(name, args, res) GO(unsafe, name, args, res)
+#define hsc_safe(name, args, res) GO(safe, name, args, res)
+
+#define GO(safety, name, args, res) \
+    extern CTYPE_##res name(CTYPE_##args);     \
+    printf("%s\n", STR(foreign import ccall safety name :: HTYPE_##args HTYPE_##res));
+
 #define STR(x) STR2(x)
 #define STR2(x) #x
-#define DECLARATION(safety, purity, ret, name, ...) \
-  foreign import ccall safety name :: TYPES(SND, ARROW, __VA_ARGS__) SEP(ARROW, __VA_ARGS__) PURITY_##purity(TYPE_##ret(SND))
-#define PURITY_io(x) IO x
-#define PURITY_pure(x) x
 
-#define TYPES(...) TYPES1(__VA_ARGS__)
-#define TYPES1(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES2(type, sep, __VA_ARGS__)
-#define TYPES2(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES3(type, sep, __VA_ARGS__)
-#define TYPES3(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES4(type, sep, __VA_ARGS__)
-#define TYPES4(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES5(type, sep, __VA_ARGS__)
-#define TYPES5(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES6(type, sep, __VA_ARGS__)
-#define TYPES6(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES7(type, sep, __VA_ARGS__)
-#define TYPES7(type, sep, x, ...) TYPE_##x(type) SEP(sep, __VA_ARGS__) TYPES8(type, sep, __VA_ARGS__)
-#define TYPES8(type, sep, x, ...) TYPE_##x(type)
+#define CTYPE_io(x) CTYPE_##x
+#define CTYPE_ptr(x) CTYPE_##x*
+#define CTYPE_unit void
+#define CTYPE_0
+#define CTYPE_1(x) CTYPE_##x
+#define CTYPE_2(x,y) CTYPE_##x, CTYPE_##y
+#define CTYPE_3(x,y,z) CTYPE_##x, CTYPE_##y, CTYPE_##z
+#define CTYPE_4(x,y,z,w) CTYPE_##x, CTYPE_##y, CTYPE_##z, CTYPE_##w
 
-#define SEP(sep, x, ...) TYPE_##x(sep)
-#define COMMA(...) ,
-#define ARROW(...) ->
-#define FST(x,y) x
-#define SND(x,y) y
-#define TYPE_(f)
+#define HTYPE_io(x) IO (HTYPE_##x)
+#define HTYPE_ptr(x) Ptr (HTYPE_##x)
+#define HTYPE_unit ()
+#define HTYPE_0
+#define HTYPE_1(x) HTYPE_##x ->
+#define HTYPE_2(x,y) HTYPE_##x -> HTYPE_##y ->
+#define HTYPE_3(x,y,z) HTYPE_##x -> HTYPE_##y -> HTYPE_##z ->
+#define HTYPE_4(x,y,z,w) HTYPE_##x -> HTYPE_##y -> HTYPE_##z -> HTYPE_##w ->
