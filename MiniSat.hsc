@@ -5,7 +5,7 @@ import Foreign.Ptr     ( Ptr, nullPtr )
 import Foreign.C.Types ( CInt )
 import Control.Exception ( finally )
 
-#define Minisat_Struct(x) struct { x f; }
+#define Minisat_Opaque
 #include "minisat.h"
 #include "hsc-magic.h"
 

@@ -34,7 +34,7 @@ GHC?=ghc
 
 # Note: as long as we are using dynamic linking with the external libraries, stdc++ will be pulled
 # in automaticall. If linking is static, we will have to specify it explicitly.
-GHC_COMPILEFLAGS=-fno-warn-deprecated-flags
+GHC_COMPILEFLAGS=-fno-warn-deprecated-flags -ignore-package minisat
 GHC_LINKFLAGS=-package QuickCheck $(MCBIND_LIB) $(MINISAT_LIB) -lz #-lstdc++
 
 ifeq ($(VERB),)
@@ -45,8 +45,8 @@ ECHO=#
 VERB=
 endif
 
-SRCS = $(wildcard *.hs) MiniSat.hs
-OBJS = $(SRCS:.hs=.o)
+SRCS = $(basename $(wildcard *.hs) $(wildcard *.hsc))
+OBJS = $(addsuffix .o, $SRCS)
 
 tests:	$(BUILD_DIR)/release/bin/test-minisatraw
 
@@ -61,9 +61,10 @@ $(BUILD_DIR)/release/bin/test-minisatraw:	$(BUILD_DIR)/release/MiniSat.o $(BUILD
 	$(ECHO) $(GHC) -o $@ $^ $(GHC_LINKFLAGS) #-lstdc++
 
 ## Dependency rules:
-$(BUILD_DIR)/release/%.d:	$(BUILD_DIR)/release/%.hs $(foreach x, $(SRCS),$(BUILD_DIR)/release/$x)
+$(BUILD_DIR)/%.d:	$(BUILD_DIR)/%.hs $(foreach s, $(SRCS), $(BUILD_DIR)/release/$s.hs)
 	$(VERB) echo Resolving dependencies: $@
 	$(ECHO) mkdir -p $(dir $@)
+	$(ECHO) rm -f $@
 	$(ECHO) $(GHC) $(GHC_COMPILEFLAGS) -M -dep-makefile $@ $< -outputdir $(dir $@) -i$(dir $@)
 # When generating dependencies for ModuleName.hs,
 # GHC expects the output file to be Main.o if ModuleName is the main module
@@ -71,28 +72,27 @@ $(BUILD_DIR)/release/%.d:	$(BUILD_DIR)/release/%.hs $(foreach x, $(SRCS),$(BUILD
 # Just deal in .o files: it's simpler.
 	$(ECHO) sed -i 's!\.hi!.o!g' $@
 
-$(BUILD_DIR)/release/%.hs:	%.hsc
-	$(VERB) echo Generating: $@
-	$(ECHO) mkdir -p $(dir $@)
-	$(ECHO) hsc2hs -o $@ $< $(MINISAT_INCLUDE) $(MCBIND_INCLUDE) $(foreach x, $(MCBIND_LIB) $(MINISAT_LIB), -L $x) -L -static -L -lstdc++ -L -lm -I.
-$(BUILD_DIR)/release/%.hs: %.hs
-	$(ECHO) mkdir -p $(dir $@)
-	$(ECHO) ln -sf ../../$< $@
-
 ## Compile rules:
-$(BUILD_DIR)/release/%.o:	$(BUILD_DIR)/release/%.hs
+$(BUILD_DIR)/%.o:	$(BUILD_DIR)/%.hs
 	$(VERB) echo Compiling: $@
 	$(ECHO) mkdir -p $(dir $@)
 	$(ECHO) $(GHC) $(GHC_COMPILEFLAGS) -c -o $@ $< -outputdir $(dir $@) -i$(dir $@)
+$(BUILD_DIR)/%.hs:	$(BUILD_DIR)/%.hsc
+	$(VERB) echo Generating: $@
+	$(ECHO) mkdir -p $(dir $@)
+	$(ECHO) hsc2hs -o $@ $< $(MINISAT_INCLUDE) $(MCBIND_INCLUDE) -I$(dir $@) -I. $(foreach x, $(MCBIND_LIB) $(MINISAT_LIB), -L $x) -L -static -l $(CXX)
+$(BUILD_DIR)/release/%: %
+	$(ECHO) mkdir -p $(dir $@)
+	$(ECHO) ln -sf ../../$< $@
 
 ghci:	
 #	ghci Sat.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
-	ghci Main.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
+	ghci TestMiniSat.hs $(GHC_COMPILEFLAGS) $(GHC_LINKFLAGS)
 
 ghci2:
 	ghci SatImplicit.hs $(GHC_LINKFLAGS)
 
 cabal:
-	cabal install $(foreach x, $(filter -I%,$(MINISAT_INCLUDE) $(MCBIND_INCLUDE)),--extra-include-dirs=$(x:-I%=%)) $(foreach x, $(filter -L%,$(MINISAT_LIB) $(MCBIND_LIB)),--extra-lib-dirs=$(x:-L%=%)) --builddir=$(BUILD_DIR)/cabal
+	cabal install $(foreach x, $(filter -I%, $(MINISAT_INCLUDE) $(MCBIND_INCLUDE)),--extra-include-dirs=$(x:-I%=%)) $(foreach x, $(filter -L%,$(MINISAT_LIB) $(MCBIND_LIB)),--extra-lib-dirs=$(x:-L%=%)) --builddir=$(BUILD_DIR)/cabal
 
--include $(foreach s, $(SRCS:.hs=.d), $(BUILD_DIR)/release/$s)
+-include $(foreach s, $(SRCS), $(BUILD_DIR)/release/$s.d)

@@ -8,3 +8,5 @@ library
   extensions:      ForeignFunctionInterface
   build-depends:   base >= 3 && < 5
   extra-libraries: minisat-c minisat z
+  include-dirs:    .
+  ghc-options:     -fno-warn-deprecated-flags
