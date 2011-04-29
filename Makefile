@@ -80,7 +80,7 @@ $(BUILD_DIR)/%.o:	$(BUILD_DIR)/%.hs
 $(BUILD_DIR)/%.hs:	$(BUILD_DIR)/%.hsc
 	$(VERB) echo Generating: $@
 	$(ECHO) mkdir -p $(dir $@)
-	$(ECHO) hsc2hs -o $@ $< $(MINISAT_INCLUDE) $(MCBIND_INCLUDE) -I$(dir $@) -I. $(foreach x, $(MCBIND_LIB) $(MINISAT_LIB), -L $x) -L -static -l $(CXX)
+	$(ECHO) LD_LIBRARY_PATH=$(patsubst -L%,%,$(filter -L%, $(MINISAT_LIB) $(MCBIND_LIB))) hsc2hs -o $@ $< $(MINISAT_INCLUDE) $(MCBIND_INCLUDE) -I$(dir $@) -I. $(foreach x, $(MCBIND_LIB) $(MINISAT_LIB), -L $x)
 $(BUILD_DIR)/release/%: %
 	$(ECHO) mkdir -p $(dir $@)
 	$(ECHO) ln -sf ../../$< $@
