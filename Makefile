@@ -72,6 +72,12 @@ $(BUILD_DIR)/%.d:	$(BUILD_DIR)/%.hs $(foreach s, $(SRCS), $(BUILD_DIR)/release/$
 # Just deal in .o files: it's simpler.
 	$(ECHO) sed -i 's!\.hi!.o!g' $@
 
+$(BUILD_DIR)/release/MiniSat.o:	$(BUILD_DIR)/release/MiniSatAPITypeCheck.hs
+$(BUILD_DIR)/release/MiniSatAPITypeCheck.hs:	HSC2HS_FLAGS=-DMiniSat_Opaque
+$(BUILD_DIR)/release/MiniSatAPITypeCheck.hsc: MiniSat.hsc
+	$(ECHO) mkdir -p $(dir $@)
+	$(ECHO) ln -sf ../../$< $@
+
 ## Compile rules:
 $(BUILD_DIR)/%.o:	$(BUILD_DIR)/%.hs
 	$(VERB) echo Compiling: $@
@@ -80,7 +86,7 @@ $(BUILD_DIR)/%.o:	$(BUILD_DIR)/%.hs
 $(BUILD_DIR)/%.hs:	$(BUILD_DIR)/%.hsc
 	$(VERB) echo Generating: $@
 	$(ECHO) mkdir -p $(dir $@)
-	$(ECHO) hsc2hs -o $@ $< $(MINISAT_INCLUDE) $(MCBIND_INCLUDE) -I$(dir $@) -I. $(foreach x, $(MCBIND_LIB) $(MINISAT_LIB), -L $x)
+	$(ECHO) hsc2hs -o $@ $< $(MINISAT_INCLUDE) $(MCBIND_INCLUDE) -I$(dir $@) -I. $(foreach x, $(MCBIND_LIB) $(MINISAT_LIB), -L $x) $(HSC2HS_FLAGS)
 $(BUILD_DIR)/release/%: %
 	$(ECHO) mkdir -p $(dir $@)
 	$(ECHO) ln -sf ../../$< $@
