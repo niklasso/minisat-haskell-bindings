@@ -98,7 +98,7 @@ ghci:
 ghci2:
 	ghci SatImplicit.hs $(GHC_LINKFLAGS)
 
-cabal:
+cabal: $(BUILD_DIR)/release/MiniSatAPITypeCheck.hs
 	cabal install $(foreach x, $(filter -I%, $(MINISAT_INCLUDE) $(MCBIND_INCLUDE)),--extra-include-dirs=$(x:-I%=%)) $(foreach x, $(filter -L%,$(MINISAT_LIB) $(MCBIND_LIB)),--extra-lib-dirs=$(x:-L%=%)) --builddir=$(BUILD_DIR)/cabal
 
 -include $(foreach s, $(SRCS), $(BUILD_DIR)/release/$s.d)
