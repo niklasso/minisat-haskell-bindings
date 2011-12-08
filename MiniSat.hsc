@@ -2,7 +2,7 @@
 module MiniSat where
 
 import Foreign.Ptr     ( Ptr, nullPtr )
-import Foreign.C.Types ( CInt )
+import Foreign.C.Types ( CInt(..) )
 import Control.Exception ( finally )
 
 #include "minisat.h"
