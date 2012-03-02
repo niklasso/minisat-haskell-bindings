@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define hsc_unsafe(name, args, res) GO(unsafe, name, args, res)
 #define hsc_safe(name, args, res) GO(safe, name, args, res)
 
