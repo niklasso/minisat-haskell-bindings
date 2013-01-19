@@ -1,12 +1,32 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE PatternSignatures #-}
+
 module MiniSat where
 
 import Foreign.Ptr     ( Ptr, nullPtr )
 import Foreign.C.Types ( CInt(..) )
-import Control.Exception ( finally )
+import Control.Exception 
+    ( AsyncException, finally, bracket, catch )
+
+import Control.Concurrent
+import Control.Concurrent.MVar
+
+import System.IO
 
 #include "minisat.h"
 #include "hsc-magic.h"
+
+withNewSolverAsync :: (Solver -> IO a) -> IO a
+withNewSolverAsync h = 
+  bracket newSolver deleteSolver $ \  s -> do
+    result <- newEmptyMVar
+    forkIO $ h s >>= putMVar result
+    takeMVar result 
+        `catch` \ (_ :: AsyncException) -> do
+            hPutStrLn stderr "exception while takeMVar"
+            minisat_interrupt s
+            hPutStrLn stderr "returned from minisat_interrupt" 
+            takeMVar result -- ?
 
 withNewSolver :: (Solver -> IO a) -> IO a
 withNewSolver h =
@@ -53,6 +73,12 @@ solve s xs =
   do minisat_solve_begin s
      sequence_ [ minisat_solve_addLit s x | x <- xs ]
      minisat_solve_commit s
+
+limited_solve :: Solver -> [Lit] -> IO LBool
+limited_solve s xs =
+  do minisat_solve_begin s
+     sequence_ [ minisat_solve_addLit s x | x <- xs ]
+     minisat_limited_solve_commit s
 
 value, modelValue :: Solver -> Lit -> IO (Maybe Bool)
 (value,modelValue) = (get minisat_value_Lit, get minisat_modelValue_Lit)
@@ -130,6 +156,11 @@ instance Show LBool where
 #unsafe minisat_solve_begin,      1(solver), io(unit)
 #unsafe minisat_solve_addLit,     2(solver, lit), io(unit)
 #safe minisat_solve_commit,       1(solver), io(bool)
+#safe minisat_limited_solve_commit,       1(solver), io(lbool)
+
+#safe minisat_interrupt,          1(solver), io(unit)
+#safe minisat_clearInterrupt,     1(solver), io(unit)
+
 #unsafe minisat_okay,             1(solver), io(bool)
 #unsafe minisat_setPolarity,      3(solver, var, int), io(unit)
 #unsafe minisat_setDecisionVar,   3(solver, var, int), io(unit)
