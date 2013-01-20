@@ -16,17 +16,23 @@ import System.IO
 #include "minisat.h"
 #include "hsc-magic.h"
 
+-- | Run a minisat instance in such a way that it is
+-- interruptable (by sending killThread).
+-- cf. https://github.com/niklasso/minisat-haskell-bindings/issues/1
 withNewSolverAsync :: (Solver -> IO a) -> IO a
 withNewSolverAsync h = 
   bracket newSolver deleteSolver $ \  s -> do
     result <- newEmptyMVar
-    forkIO $ h s >>= putMVar result
-    takeMVar result 
-        `catch` \ (_ :: AsyncException) -> do
-            hPutStrLn stderr "exception while takeMVar"
+    done <- newEmptyMVar
+    forkIO $ do
+        out <- h s 
+        putMVar done ()
+        putMVar result out
+    takeMVar done `catch` \ (_ :: AsyncException) -> do
+            -- hPutStrLn stderr "caught AsyncException"
             minisat_interrupt s
-            hPutStrLn stderr "returned from minisat_interrupt" 
-            takeMVar result -- ?
+            -- hPutStrLn stderr "called minisat_interrupt" 
+    takeMVar result 
 
 withNewSolver :: (Solver -> IO a) -> IO a
 withNewSolver h =
