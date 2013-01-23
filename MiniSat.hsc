@@ -5,13 +5,8 @@ module MiniSat where
 
 import Foreign.Ptr     ( Ptr, nullPtr )
 import Foreign.C.Types ( CInt(..) )
-import Control.Exception 
-    ( AsyncException, finally, bracket, catch )
-
-import Control.Concurrent
-import Control.Concurrent.MVar
-
-import System.IO
+import Control.Exception (bracket, finally, mask_, onException )
+import Control.Concurrent.Async
 
 #include "minisat.h"
 #include "hsc-magic.h"
@@ -22,17 +17,8 @@ import System.IO
 withNewSolverAsync :: (Solver -> IO a) -> IO a
 withNewSolverAsync h = 
   bracket newSolver deleteSolver $ \  s -> do
-    result <- newEmptyMVar
-    done <- newEmptyMVar
-    forkIO $ do
-        out <- h s 
-        putMVar done ()
-        putMVar result out
-    takeMVar done `catch` \ (_ :: AsyncException) -> do
-            -- hPutStrLn stderr "caught AsyncException"
-            minisat_interrupt s
-            -- hPutStrLn stderr "called minisat_interrupt" 
-    takeMVar result 
+    mask_ $ withAsync (h s) $ \ a -> do
+      wait a `onException` minisat_interrupt s
 
 withNewSolver :: (Solver -> IO a) -> IO a
 withNewSolver h =
