@@ -26,8 +26,10 @@ withNewSolver h =
      h s `finally` deleteSolver s
 
 newSolver :: IO Solver
-newSolver = minisat_new
---newSolver = do s <- minisat_new; minisat_set_verbosity s 0; return s
+newSolver =
+  do s <- minisat_new
+     eliminate s True -- make the default behave as a normal solver (avoiding common bugs)
+     return s
 
 deleteSolver :: Solver -> IO ()
 deleteSolver = minisat_delete
