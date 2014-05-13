@@ -86,24 +86,19 @@ conflict :: Solver -> IO [Lit]
 conflict s =
   do n <- minisat_conflict_len s
      sequence [ minisat_conflict_nthLit s i | i <- [0..n-1] ]
-     
--- TODO: are these good enough? Also, add functions: negate, and, or, etc.
-#ifdef Minisat_Opaque
-l_True  = MkLBool $ #const minisat_l_True.f
-l_False = MkLBool $ #const minisat_l_False.f
-l_Undef = MkLBool $ #const minisat_l_Undef.f
-#else
-l_True = MkLBool $ #const minisat_l_True
-l_False = MkLBool $ #const minisat_l_False
-l_Undef = MkLBool $ #const minisat_l_Undef
-#endif
+
+-- TODO: Is it possible to FFI C constants, instead of using a dummy function?
+l_True, l_False, l_Undef :: LBool
+l_True  = minisat_get_l_True
+l_False = minisat_get_l_False
+l_Undef = minisat_get_l_Undef
 
 ----------------------------------------------------------------------------
 
 newtype Solver = MkSolver (Ptr ())
 newtype Var    = MkVar CInt  deriving ( Eq, Ord )
 newtype Lit    = MkLit CInt  deriving ( Eq, Ord )
-newtype LBool  = MkLBool Int deriving ( Eq, Ord )
+newtype LBool  = MkLBool CInt deriving ( Eq, Ord )
 
 instance Show Var where
   show (MkVar n) = 'v' : show n
@@ -160,6 +155,10 @@ instance Show LBool where
 #unsafe minisat_value_Lit,        2(solver, lit), io(lbool)
 #unsafe minisat_modelValue_Var,   2(solver, var), io(lbool)
 #unsafe minisat_modelValue_Lit,   2(solver, lit), io(lbool)
+
+#unsafe minisat_get_l_True,       0, lbool
+#unsafe minisat_get_l_False,      0, lbool
+#unsafe minisat_get_l_Undef,      0, lbool
 
 -- // Simpsolver methods:
 #unsafe minisat_setFrozen,        3(solver, var, bool), io(unit)
